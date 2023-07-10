@@ -22,5 +22,5 @@ export const db = mongoClient.db();
 
 app.use(routes);
 
-const PORT = 5000;
-app.listen(PORT, () => console.log(`Rodando na porta ${PORT}`));
+const port = process.env.PORT || 5000;
+app.listen(port, () => console.log(`Rodando na porta ${port}`));
