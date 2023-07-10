@@ -122,8 +122,7 @@ app.post("/nova-transacao/:tipo", async (req, res) => {
   const token = authorization?.replace("Bearer ", "");
   const { value, description, userId } = req.body;
   const { tipo } = req.params;
-  console.log(token);
-  console.log(value);
+ 
   if (token === null) {
     res.sendStatus(401);
     return;
@@ -153,10 +152,11 @@ app.post("/nova-transacao/:tipo", async (req, res) => {
   }
 });
 
-app.get("/busca-transacao/:id", async (req, res) => {
+app.get("/busca-transacao/:userId", async (req, res) => {
   const { authorization } = req.headers;
   const token = authorization?.replace("Bearer ", "");
-  const {userId} = req.params
+  const {userId} = req.params;
+  console.log(token, req.params)
   try {
     const verificaToken = await db
       .collection("sessions")
