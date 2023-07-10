@@ -23,7 +23,7 @@ try {
 }
 
 const db = mongoClient.db();
-
+const date = dayjs().locale("pt-br").format("DD/MM")
 const schemaName = Joi.string().required();
 const schemaEmail = Joi.string().email().required();
 const schemaSenha = Joi.string().required().min(3);
@@ -101,15 +101,13 @@ app.post("/signIn", async (req, res) => {
       const user = {
         userId: verificaEmail._id,
         name: verificaEmail.name,
-        token: token
-      }
-      await db
-        .collection("sessions")
-        .insertOne({
-          userId: verificaEmail._id,
-          name: verificaEmail.name,
-          token: token
-        });
+        token: token,
+      };
+      await db.collection("sessions").insertOne({
+        userId: verificaEmail._id,
+        name: verificaEmail.name,
+        token: token,
+      });
       res.status(200).send(user);
     } else {
       res.sendStatus(401);
@@ -119,35 +117,61 @@ app.post("/signIn", async (req, res) => {
   }
 });
 
-
 app.post("/nova-transacao/:tipo", async (req, res) => {
-  const {authorization} = req.headers;
-  const token = authorization?.replace('Bearer ', '');
-  const {value, description} = req.body;
-  const {tipo} = req.params;
-  console.log(token)
-  console.log(value)
-  if (token === null ){
+  const { authorization } = req.headers;
+  const token = authorization?.replace("Bearer ", "");
+  const { value, description, userId } = req.body;
+  const { tipo } = req.params;
+  console.log(token);
+  console.log(value);
+  if (token === null) {
     res.sendStatus(401);
-    return
+    return;
   }
 
-  const validation = schemaTransacao.validate(value, {abortEarly: false});
-  if (validation) return res.status(422).send("Digite um número válido com no máximo 2 casas decimais")
+  const validation = schemaTransacao.validate(value, { abortEarly: false });
+  if (validation.error) {
+    const errors = validation.error.details.map((detail) => detail.message);
+    return res.status(422).send("Digite um número válido");
+  }
 
   try {
-    const verificaToken = await db.collection("sessions").findOne({token: token});
-    if (!verificaToken) return res.status(401).send("Usuario não está logado")
-    await db.collection("transacoes").insertOne({
+    const verificaToken = await db
+      .collection("sessions")
+      .findOne({ token: token });
+    if (!verificaToken) return res.status(401).send("Usuario não está logado");
+    await db.collection(`transacoes`).insertOne({
       type: tipo,
       value,
-      description
-    })
+      userId: userId,
+      description,
+      date: date
+    });
     res.sendStatus(200);
   } catch (err) {
     return res.status(500).send(err.message);
   }
 });
 
+app.get("/busca-transacao/:id", async (req, res) => {
+  const { authorization } = req.headers;
+  const token = authorization?.replace("Bearer ", "");
+  const {userId} = req.params
+  try {
+    const verificaToken = await db
+      .collection("sessions")
+      .findOne({ token: token });
+    if (!verificaToken) return res.status(401).send("Usuario não está logado");
+
+    const buscaTransacao = await db
+      .collection(`transacoes`)
+      .find({ userId: userId })
+      .toArray();
+      
+    res.send(buscaTransacao);
+  } catch (err) {
+    return res.status(500).send(err.message);
+  }
+});
 const PORT = 5000;
 app.listen(PORT, () => console.log(`Rodando na porta ${PORT}`));
