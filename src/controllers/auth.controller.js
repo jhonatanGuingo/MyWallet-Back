@@ -1,8 +1,8 @@
-
 import bcrypt from "bcrypt";
 import { v4 as uuid } from "uuid";
 import { db } from "../app.js";
 import { schemaEmail, schemaName, schemaSenha } from "../schemas/schema.js";
+import { authRepositorie } from "../repositories/auth-repositorie.js";
 
 export async function signUp(req, res) {
   const { name, email, senha } = req.body;
@@ -30,21 +30,12 @@ export async function signUp(req, res) {
     return res.status(422).send("A senha deve possuir mais de 3 caracteres");
   }
 
-  try {
-    const emailExist = await db
-      .collection("cadastro")
-      .findOne({ email: email });
-    if (emailExist) return res.status(409).send("E-mail já cadastrado");
+  const emailExist = await authRepositorie.emailExist(email);
+  if (emailExist) return res.status(409).send("E-mail já cadastrado");
 
-    await db.collection("cadastro").insertOne({
-      name,
-      email,
-      senha: hash,
-    });
-    res.sendStatus(201);
-  } catch (err) {
-    return res.status(500).send(err.message);
-  }
+  const newUser = await authRepositorie.signUp(name, email, hash);
+
+  res.sendStatus(201);
 }
 
 export async function signIn(req, res) {
@@ -66,32 +57,19 @@ export async function signIn(req, res) {
     return res.status(422).send("Digite sua senha");
   }
 
-  try {
-    const verificaEmail = await db
-      .collection("cadastro")
-      .findOne({ email: email });
-    if (!verificaEmail) return res.sendStatus(404);
-    if (verificaEmail && bcrypt.compareSync(senha, verificaEmail.senha)) {
-      const token = uuid();
-      const user = {
-        userId: verificaEmail._id,
-        name: verificaEmail.name,
-        token: token,
-      };
-      await db.collection("sessions").insertOne({
-        userId: verificaEmail._id,
-        name: verificaEmail.name,
-        token: token,
-      });
-      res.status(200).send(user);
-    } else {
-      res.sendStatus(401);
-    }
-  } catch (err) {
-    return res.status(500).send(err.message);
+  const emailExist = await authRepositorie.emailExist(email);
+
+  if (!emailExist) return res.sendStatus(404);
+
+  if (emailExist && bcrypt.compareSync(senha, emailExist.senha)) {
+    const token = uuid();
+    const newSession = authRepositorie.newSession(
+      emailExist._id,
+      emailExist.name,
+      token
+    );
+    return newSession;
   }
-}
 
-export async function logOut(req, res){
-
+  return res.sendStatus(401);
 }
