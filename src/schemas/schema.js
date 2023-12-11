@@ -1,6 +1,12 @@
 import Joi from "joi";
+export const schema = Joi.object({
+    name: Joi.string().required(),
+    email: Joi.string().email().required(),
+    senha: Joi.string().required().min(3),
+    transacao: Joi.number().required().positive().precision(2)
+})
 
-export const schemaName = Joi.string().required();
-export const schemaEmail = Joi.string().email().required();
-export const schemaSenha = Joi.string().required().min(3);
-export const schemaTransacao = Joi.number().required().positive().precision(2);
+export const schemaLogin = Joi.object({
+    email: Joi.string().email().required(),
+    senha: Joi.string().required().min(3),
+})
